@@ -22,7 +22,7 @@ installed_requirements:
   version: {version: ==0.0.18}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-taff
-  version: {version: ==0.0.3}
+  version: {version: ==0.0.4}
 - channel: conda-forge
   name: pandas
   version: {version: ==2.3.3}
