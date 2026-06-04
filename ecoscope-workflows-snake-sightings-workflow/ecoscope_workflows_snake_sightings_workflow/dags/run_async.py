@@ -976,7 +976,7 @@ def main(params: Params):
                 "generation_date": None,
                 "map_width_inches": 6.0,
                 "device_scale_factor": 2.0,
-                "wait_for_timeout": 15000,
+                "wait_for_timeout": 30000,
             }
             | (params_dict.get("report_context") or {}),
             method="call",
