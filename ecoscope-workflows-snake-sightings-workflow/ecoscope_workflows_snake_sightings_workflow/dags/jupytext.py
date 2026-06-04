@@ -1315,7 +1315,7 @@ report_context = (
         generation_date=None,
         map_width_inches=6.0,
         device_scale_factor=2.0,
-        wait_for_timeout=15000,
+        wait_for_timeout=30000,
         **report_context_params,
     )
     .call()
