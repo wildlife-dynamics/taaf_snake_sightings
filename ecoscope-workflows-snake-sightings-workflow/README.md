@@ -6,7 +6,7 @@
 ```yaml
 # fingerprint:
 artifacts_sha256_basic: 5de6549ac5c791264fd232379cb96e065130fcfb4dec6b927611b65e468bd2f5
-artifacts_sha256_strict: ff45ba76c3ca20b3eabdf4e2de51783812af99049d5a97805460db0c43b1d9f5
+artifacts_sha256_strict: 8fb24d68ee5bccaeddcf1b58542dcc4bcc69b76bd183ce5f0e4a6801664da73a
 installed_requirements:
 - channel: https://repo.prefix.dev/ecoscope-workflows/
   name: ecoscope-workflows-core
@@ -16,13 +16,13 @@ installed_requirements:
   version: {version: ==0.22.18}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-custom
-  version: {version: ==0.0.44}
+  version: {version: ==0.0.51}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-ste
   version: {version: ==0.0.18}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-taff
-  version: {version: ==0.0.5}
+  version: {version: ==0.0.6}
 - channel: conda-forge
   name: pandas
   version: {version: ==2.3.3}
