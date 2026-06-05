@@ -14,7 +14,7 @@ requirements:
     version: "0.0.18.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   - name: ecoscope-workflows-ext-taff
-    version: "0.0.5.*"
+    version: "0.0.6.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   - name: pandas
     version: ">=1.5.0"
@@ -41,6 +41,10 @@ rjsf-overrides:
     "time_range.properties.until.default": "2026-04-01T00:00:00Z"
 
 # Global default: skip tasks whose inputs are empty DataFrames only.
+# any_dependency_skipped is NOT here — we don't use separate MCP layer tasks
+# any more, so there is nothing optional that could cascade a SkipSentinel.
+# The MCP hull polygon is now embedded inside the points GDF by the Python
+# task, so draw_map always receives exactly one clean layer.
 task-instance-defaults:
   skipif:
     conditions:
