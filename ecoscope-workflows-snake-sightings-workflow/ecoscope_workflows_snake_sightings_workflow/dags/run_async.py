@@ -433,7 +433,6 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "data_url": None,
                 "geodataframe": DependsOn("all_pts_gdf"),
                 "layer_style": {
                     "filled": True,
@@ -577,7 +576,6 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "data_url": None,
                 "geodataframe": DependsOn("effort_grid"),
                 "layer_style": {
                     "filled": True,
@@ -726,7 +724,6 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "data_url": None,
                 "geodataframe": DependsOn("richness_grid"),
                 "layer_style": {
                     "filled": True,

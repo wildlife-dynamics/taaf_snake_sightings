@@ -202,7 +202,7 @@ workflow:
     id: all_pts_layer
     task: create_geojson_layer
     partial:
-      data_url: null
+      #data_url: null
       geodataframe: ${{ workflow.all_pts_gdf.return }}
       layer_style:
         filled: true
@@ -280,7 +280,7 @@ workflow:
     id: effort_layer
     task: create_geojson_layer
     partial:
-      data_url: null
+      #data_url: null
       geodataframe: ${{ workflow.effort_grid.return }}
       layer_style:
         filled: true
@@ -358,7 +358,7 @@ workflow:
     id: richness_layer
     task: create_geojson_layer
     partial:
-      data_url: null
+      #data_url: null
       geodataframe: ${{ workflow.richness_grid.return }}
       layer_style:
         filled: true

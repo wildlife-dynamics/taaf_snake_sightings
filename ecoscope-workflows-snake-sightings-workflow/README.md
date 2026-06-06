@@ -5,8 +5,8 @@
 
 ```yaml
 # fingerprint:
-artifacts_sha256_basic: 5de6549ac5c791264fd232379cb96e065130fcfb4dec6b927611b65e468bd2f5
-artifacts_sha256_strict: 88a7628621ce60cbf4e29b2c01d9c221e363858a0f64d0d7f112d48b05a2aa2c
+artifacts_sha256_basic: 5e5827b1a1cd8a980e9395b116266ce27e724979d85f123b68f27bc03a378292
+artifacts_sha256_strict: 2c77b12377cab4691f7b33e31c9a919b279f268bf9722bb6516685bd16558907
 installed_requirements:
 - channel: https://repo.prefix.dev/ecoscope-workflows/
   name: ecoscope-workflows-core
@@ -42,7 +42,7 @@ installed_requirements:
   name: shapely
   version: {version: ==2.1.2}
 params_sha256: 10ce3d00be226ae2e386c0ffe23124f187f536901594b72d9b50231a6605a33a
-spec_sha256: 872df9343ca1c76f8b43c294a427517c70ce61f383d2a9b2becf708031e1515a
+spec_sha256: c569a451205562c521396320e527e8149e1b7cbb94ad7a2ae391764def7a7b16
 
 ```
 
