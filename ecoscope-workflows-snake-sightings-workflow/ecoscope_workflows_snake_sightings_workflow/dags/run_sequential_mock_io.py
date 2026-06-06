@@ -373,7 +373,6 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            data_url=None,
             geodataframe=all_pts_gdf,
             layer_style={
                 "filled": True,
@@ -505,7 +504,6 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            data_url=None,
             geodataframe=effort_grid,
             layer_style={
                 "filled": True,
@@ -637,7 +635,6 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            data_url=None,
             geodataframe=richness_grid,
             layer_style={
                 "filled": True,

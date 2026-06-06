@@ -545,7 +545,6 @@ all_pts_layer = (
         unpack_depth=1,
     )
     .partial(
-        data_url=None,
         geodataframe=all_pts_gdf,
         layer_style={
             "filled": True,
@@ -751,7 +750,6 @@ effort_layer = (
         unpack_depth=1,
     )
     .partial(
-        data_url=None,
         geodataframe=effort_grid,
         layer_style={
             "filled": True,
@@ -957,7 +955,6 @@ richness_layer = (
         unpack_depth=1,
     )
     .partial(
-        data_url=None,
         geodataframe=richness_grid,
         layer_style={
             "filled": True,
