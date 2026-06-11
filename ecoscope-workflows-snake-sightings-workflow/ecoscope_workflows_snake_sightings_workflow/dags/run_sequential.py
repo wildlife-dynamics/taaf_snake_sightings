@@ -65,6 +65,7 @@ from ecoscope_workflows_ext_taff.tasks import (
 from ecoscope_workflows_ext_taff.tasks import (
     save_summary_table_as_docx as save_summary_table_as_docx,
 )
+from ecoscope_workflows_ext_taff.tasks import take_first_n_items as take_first_n_items
 
 from ..params import Params
 
@@ -389,7 +390,7 @@ def main(params: Params):
         )
         .partial(
             geodataframes=[all_pts_gdf],
-            max_zoom=5,
+            max_zoom=7,
             **(params_dict.get("all_view_state") or {}),
         )
         .call()
@@ -412,8 +413,8 @@ def main(params: Params):
             ],
             view_state=all_view_state,
             static=True,
-            title="All Snake Species Distribution",
-            max_zoom=5,
+            title=None,
+            max_zoom=7,
             legend_style={"placement": "bottom-right"},
             **(params_dict.get("draw_all_species_map") or {}),
         )
@@ -455,6 +456,100 @@ def main(params: Params):
         .call()
     )
 
+    per_species_outputs = (
+        generate_per_species_outputs.validate()
+        .set_task_instance_id("per_species_outputs")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[],
+            unpack_depth=1,
+        )
+        .partial(
+            gdf=filter_species,
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            name_column="taxon_name",
+            top_n_by_count=None,
+            species_summary_df=species_summary_df,
+            buffer_fraction=0.15,
+            zoom_extra=0,
+            fallback_zoom=0,
+            fallback_lat=0.0,
+            fallback_lon=0.0,
+            map_max_zoom=7,
+            png_device_scale_factor=2.0,
+            png_wait_for_timeout=15000,
+            overlay_widget_scale=0.65,
+            **(params_dict.get("per_species_outputs") or {}),
+        )
+        .call()
+    )
+
+    per_species_widgets = (
+        get_per_species_widgets.validate()
+        .set_task_instance_id("per_species_widgets")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[],
+            unpack_depth=1,
+        )
+        .partial(
+            outputs=per_species_outputs,
+            **(params_dict.get("per_species_widgets") or {}),
+        )
+        .call()
+    )
+
+    per_species_png_paths = (
+        get_per_species_png_paths.validate()
+        .set_task_instance_id("per_species_png_paths")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[],
+            unpack_depth=1,
+        )
+        .partial(
+            outputs=per_species_outputs,
+            **(params_dict.get("per_species_png_paths") or {}),
+        )
+        .call()
+    )
+
+    per_species_species_names = (
+        get_per_species_species_names.validate()
+        .set_task_instance_id("per_species_species_names")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[],
+            unpack_depth=1,
+        )
+        .partial(
+            outputs=per_species_outputs,
+            **(params_dict.get("per_species_species_names") or {}),
+        )
+        .call()
+    )
+
+    top10_per_species_widgets = (
+        take_first_n_items.validate()
+        .set_task_instance_id("top10_per_species_widgets")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[],
+            unpack_depth=1,
+        )
+        .partial(
+            items=per_species_widgets,
+            n=10,
+            **(params_dict.get("top10_per_species_widgets") or {}),
+        )
+        .call()
+    )
+
     effort_grid = (
         create_observation_effort_grid.validate()
         .set_task_instance_id("effort_grid")
@@ -492,16 +587,23 @@ def main(params: Params):
             layer_style={
                 "filled": True,
                 "stroked": True,
-                "get_fill_color": "fill_color",
-                "get_line_color": [80, 80, 80, 90],
-                "get_line_width": 0.6,
-                "opacity": 1.0,
+                "extruded": False,
+                "wireframe": False,
+                "get_fill_color": "density_colors",
+                "get_line_color": [0, 0, 0],
+                "opacity": 0.75,
+                "get_line_width": 0.85,
+                "get_elevation": 0,
+                "get_point_radius": 1,
+                "line_width_units": "pixels",
+                "line_width_scale": 1,
+                "line_width_min_pixels": 1,
+                "line_width_max_pixels": 5,
             },
             legend={
-                "title": "Observation Effort (15 km grid)",
-                "label_column": "bin_label",
-                "color_column": "fill_color",
-                "sort": "ascending",
+                "title": "Observation Effort",
+                "label_column": "density_bins",
+                "color_column": "density_colors",
             },
             **(params_dict.get("effort_layer") or {}),
         )
@@ -519,7 +621,7 @@ def main(params: Params):
         )
         .partial(
             geodataframes=[effort_grid],
-            max_zoom=5,
+            max_zoom=7,
             **(params_dict.get("effort_view_state") or {}),
         )
         .call()
@@ -542,8 +644,8 @@ def main(params: Params):
             ],
             view_state=effort_view_state,
             static=True,
-            title="Snake Observation Effort",
-            max_zoom=5,
+            title=None,
+            max_zoom=7,
             legend_style={"placement": "bottom-right"},
             **(params_dict.get("draw_effort_map") or {}),
         )
@@ -623,16 +725,23 @@ def main(params: Params):
             layer_style={
                 "filled": True,
                 "stroked": True,
-                "get_fill_color": "fill_color",
-                "get_line_color": [80, 80, 80, 90],
-                "get_line_width": 0.5,
-                "opacity": 1.0,
+                "extruded": False,
+                "wireframe": False,
+                "get_fill_color": "density_colors",
+                "get_line_color": [0, 0, 0],
+                "opacity": 0.75,
+                "get_line_width": 0.85,
+                "get_elevation": 0,
+                "get_point_radius": 1,
+                "line_width_units": "pixels",
+                "line_width_scale": 1,
+                "line_width_min_pixels": 1,
+                "line_width_max_pixels": 5,
             },
             legend={
-                "title": "Snake Species Richness (15 km grid)",
-                "label_column": "bin_label",
-                "color_column": "fill_color",
-                "sort": "ascending",
+                "title": "Snake Species Richness",
+                "label_column": "density_bins",
+                "color_column": "density_colors",
             },
             **(params_dict.get("richness_layer") or {}),
         )
@@ -650,7 +759,7 @@ def main(params: Params):
         )
         .partial(
             geodataframes=[richness_grid],
-            max_zoom=5,
+            max_zoom=7,
             **(params_dict.get("richness_view_state") or {}),
         )
         .call()
@@ -673,8 +782,8 @@ def main(params: Params):
             ],
             view_state=richness_view_state,
             static=True,
-            title="Snake Species Richness",
-            max_zoom=5,
+            title=None,
+            max_zoom=7,
             legend_style={"placement": "bottom-right"},
             **(params_dict.get("draw_richness_map") or {}),
         )
@@ -712,105 +821,6 @@ def main(params: Params):
             title="Species Richness Map",
             data=persist_richness_html,
             **(params_dict.get("richness_map_widget") or {}),
-        )
-        .call()
-    )
-
-    per_species_outputs = (
-        generate_per_species_outputs.validate()
-        .set_task_instance_id("per_species_outputs")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[],
-            unpack_depth=1,
-        )
-        .partial(
-            gdf=filter_species,
-            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            name_column="taxon_name",
-            buffer_fraction=0.15,
-            zoom_extra=0,
-            fallback_zoom=0,
-            fallback_lat=0.0,
-            fallback_lon=0.0,
-            map_max_zoom=5,
-            png_device_scale_factor=2.0,
-            png_wait_for_timeout=15000,
-            overlay_widget_scale=0.65,
-            **(params_dict.get("per_species_outputs") or {}),
-        )
-        .call()
-    )
-
-    per_species_widgets = (
-        get_per_species_widgets.validate()
-        .set_task_instance_id("per_species_widgets")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[],
-            unpack_depth=1,
-        )
-        .partial(
-            outputs=per_species_outputs,
-            **(params_dict.get("per_species_widgets") or {}),
-        )
-        .call()
-    )
-
-    per_species_png_paths = (
-        get_per_species_png_paths.validate()
-        .set_task_instance_id("per_species_png_paths")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[],
-            unpack_depth=1,
-        )
-        .partial(
-            outputs=per_species_outputs,
-            **(params_dict.get("per_species_png_paths") or {}),
-        )
-        .call()
-    )
-
-    per_species_species_names = (
-        get_per_species_species_names.validate()
-        .set_task_instance_id("per_species_species_names")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[],
-            unpack_depth=1,
-        )
-        .partial(
-            outputs=per_species_outputs,
-            **(params_dict.get("per_species_species_names") or {}),
-        )
-        .call()
-    )
-
-    per_species_pages_docx = (
-        build_per_species_pages_docx.validate()
-        .set_task_instance_id("per_species_pages_docx")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[],
-            unpack_depth=1,
-        )
-        .partial(
-            species_png_paths=per_species_png_paths,
-            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            species_names=per_species_species_names,
-            filename="per_species_maps.docx",
-            use_landscape=False,
-            maps_per_row=2,
-            maps_per_col=3,
-            heading_font_size_pt=7,
-            font_name="Arial",
-            **(params_dict.get("per_species_pages_docx") or {}),
         )
         .call()
     )
@@ -877,6 +887,30 @@ def main(params: Params):
         .call()
     )
 
+    per_species_pages_docx = (
+        build_per_species_pages_docx.validate()
+        .set_task_instance_id("per_species_pages_docx")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[],
+            unpack_depth=1,
+        )
+        .partial(
+            species_png_paths=per_species_png_paths,
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            species_names=per_species_species_names,
+            filename="per_species_maps.docx",
+            use_landscape=False,
+            maps_per_row=2,
+            maps_per_col=3,
+            heading_font_size_pt=7,
+            font_name="Arial",
+            **(params_dict.get("per_species_pages_docx") or {}),
+        )
+        .call()
+    )
+
     final_report = (
         combine_docx_files.validate()
         .set_task_instance_id("final_report")
@@ -911,9 +945,9 @@ def main(params: Params):
             widgets=[
                 summary_table_widget,
                 all_species_widget,
-                effort_map_widget,
                 richness_map_widget,
-                per_species_widgets,
+                effort_map_widget,
+                top10_per_species_widgets,
             ],
             time_range=time_range,
             groupers=groupers,

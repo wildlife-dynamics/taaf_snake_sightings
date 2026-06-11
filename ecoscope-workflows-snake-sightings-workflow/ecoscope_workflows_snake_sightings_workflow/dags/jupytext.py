@@ -75,6 +75,7 @@ from ecoscope_workflows_ext_taff.tasks import (
 from ecoscope_workflows_ext_taff.tasks import (
     save_summary_table_as_docx as save_summary_table_as_docx,
 )
+from ecoscope_workflows_ext_taff.tasks import take_first_n_items as take_first_n_items
 
 # %% [markdown]
 # ## Set workflow details
@@ -587,7 +588,7 @@ all_view_state = (
         conditions=[],
         unpack_depth=1,
     )
-    .partial(geodataframes=[all_pts_gdf], max_zoom=5, **all_view_state_params)
+    .partial(geodataframes=[all_pts_gdf], max_zoom=7, **all_view_state_params)
     .call()
 )
 
@@ -622,8 +623,8 @@ draw_all_species_map = (
         ],
         view_state=all_view_state,
         static=True,
-        title="All Snake Species Distribution",
-        max_zoom=5,
+        title=None,
+        max_zoom=7,
         legend_style={"placement": "bottom-right"},
         **draw_all_species_map_params,
     )
@@ -695,6 +696,147 @@ all_species_widget = (
 
 
 # %% [markdown]
+# ## Generate all per-species outputs
+
+# %%
+# parameters
+
+per_species_outputs_params = dict()
+
+# %%
+# call the task
+
+
+per_species_outputs = (
+    generate_per_species_outputs.set_task_instance_id("per_species_outputs")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[],
+        unpack_depth=1,
+    )
+    .partial(
+        gdf=filter_species,
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        name_column="taxon_name",
+        top_n_by_count=None,
+        species_summary_df=species_summary_df,
+        buffer_fraction=0.15,
+        zoom_extra=0,
+        fallback_zoom=0,
+        fallback_lat=0.0,
+        fallback_lon=0.0,
+        map_max_zoom=7,
+        png_device_scale_factor=2.0,
+        png_wait_for_timeout=15000,
+        overlay_widget_scale=0.65,
+        **per_species_outputs_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Extract per-species widgets
+
+# %%
+# parameters
+
+per_species_widgets_params = dict()
+
+# %%
+# call the task
+
+
+per_species_widgets = (
+    get_per_species_widgets.set_task_instance_id("per_species_widgets")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[],
+        unpack_depth=1,
+    )
+    .partial(outputs=per_species_outputs, **per_species_widgets_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Extract per-species PNG paths
+
+# %%
+# parameters
+
+per_species_png_paths_params = dict()
+
+# %%
+# call the task
+
+
+per_species_png_paths = (
+    get_per_species_png_paths.set_task_instance_id("per_species_png_paths")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[],
+        unpack_depth=1,
+    )
+    .partial(outputs=per_species_outputs, **per_species_png_paths_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Extract per-species species names
+
+# %%
+# parameters
+
+per_species_species_names_params = dict()
+
+# %%
+# call the task
+
+
+per_species_species_names = (
+    get_per_species_species_names.set_task_instance_id("per_species_species_names")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[],
+        unpack_depth=1,
+    )
+    .partial(outputs=per_species_outputs, **per_species_species_names_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Select top 10 per-species widgets for dashboard
+
+# %%
+# parameters
+
+top10_per_species_widgets_params = dict()
+
+# %%
+# call the task
+
+
+top10_per_species_widgets = (
+    take_first_n_items.set_task_instance_id("top10_per_species_widgets")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[],
+        unpack_depth=1,
+    )
+    .partial(items=per_species_widgets, n=10, **top10_per_species_widgets_params)
+    .call()
+)
+
+
+# %% [markdown]
 # ## Create observation effort grid
 
 # %%
@@ -754,16 +896,23 @@ effort_layer = (
         layer_style={
             "filled": True,
             "stroked": True,
-            "get_fill_color": "fill_color",
-            "get_line_color": [80, 80, 80, 90],
-            "get_line_width": 0.6,
-            "opacity": 1.0,
+            "extruded": False,
+            "wireframe": False,
+            "get_fill_color": "density_colors",
+            "get_line_color": [0, 0, 0],
+            "opacity": 0.75,
+            "get_line_width": 0.85,
+            "get_elevation": 0,
+            "get_point_radius": 1,
+            "line_width_units": "pixels",
+            "line_width_scale": 1,
+            "line_width_min_pixels": 1,
+            "line_width_max_pixels": 5,
         },
         legend={
-            "title": "Observation Effort (15 km grid)",
-            "label_column": "bin_label",
-            "color_column": "fill_color",
-            "sort": "ascending",
+            "title": "Observation Effort",
+            "label_column": "density_bins",
+            "color_column": "density_colors",
         },
         **effort_layer_params,
     )
@@ -791,7 +940,7 @@ effort_view_state = (
         conditions=[],
         unpack_depth=1,
     )
-    .partial(geodataframes=[effort_grid], max_zoom=5, **effort_view_state_params)
+    .partial(geodataframes=[effort_grid], max_zoom=7, **effort_view_state_params)
     .call()
 )
 
@@ -826,8 +975,8 @@ draw_effort_map = (
         ],
         view_state=effort_view_state,
         static=True,
-        title="Snake Observation Effort",
-        max_zoom=5,
+        title=None,
+        max_zoom=7,
         legend_style={"placement": "bottom-right"},
         **draw_effort_map_params,
     )
@@ -959,16 +1108,23 @@ richness_layer = (
         layer_style={
             "filled": True,
             "stroked": True,
-            "get_fill_color": "fill_color",
-            "get_line_color": [80, 80, 80, 90],
-            "get_line_width": 0.5,
-            "opacity": 1.0,
+            "extruded": False,
+            "wireframe": False,
+            "get_fill_color": "density_colors",
+            "get_line_color": [0, 0, 0],
+            "opacity": 0.75,
+            "get_line_width": 0.85,
+            "get_elevation": 0,
+            "get_point_radius": 1,
+            "line_width_units": "pixels",
+            "line_width_scale": 1,
+            "line_width_min_pixels": 1,
+            "line_width_max_pixels": 5,
         },
         legend={
-            "title": "Snake Species Richness (15 km grid)",
-            "label_column": "bin_label",
-            "color_column": "fill_color",
-            "sort": "ascending",
+            "title": "Snake Species Richness",
+            "label_column": "density_bins",
+            "color_column": "density_colors",
         },
         **richness_layer_params,
     )
@@ -996,7 +1152,7 @@ richness_view_state = (
         conditions=[],
         unpack_depth=1,
     )
-    .partial(geodataframes=[richness_grid], max_zoom=5, **richness_view_state_params)
+    .partial(geodataframes=[richness_grid], max_zoom=7, **richness_view_state_params)
     .call()
 )
 
@@ -1031,8 +1187,8 @@ draw_richness_map = (
         ],
         view_state=richness_view_state,
         static=True,
-        title="Snake Species Richness",
-        max_zoom=5,
+        title=None,
+        max_zoom=7,
         legend_style={"placement": "bottom-right"},
         **draw_richness_map_params,
     )
@@ -1098,159 +1254,6 @@ richness_map_widget = (
         title="Species Richness Map",
         data=persist_richness_html,
         **richness_map_widget_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Generate all per-species outputs
-
-# %%
-# parameters
-
-per_species_outputs_params = dict(
-    top_n_by_count=...,
-    species_summary_df=...,
-)
-
-# %%
-# call the task
-
-
-per_species_outputs = (
-    generate_per_species_outputs.set_task_instance_id("per_species_outputs")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[],
-        unpack_depth=1,
-    )
-    .partial(
-        gdf=filter_species,
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        name_column="taxon_name",
-        buffer_fraction=0.15,
-        zoom_extra=0,
-        fallback_zoom=0,
-        fallback_lat=0.0,
-        fallback_lon=0.0,
-        map_max_zoom=5,
-        png_device_scale_factor=2.0,
-        png_wait_for_timeout=15000,
-        overlay_widget_scale=0.65,
-        **per_species_outputs_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Extract per-species widgets
-
-# %%
-# parameters
-
-per_species_widgets_params = dict()
-
-# %%
-# call the task
-
-
-per_species_widgets = (
-    get_per_species_widgets.set_task_instance_id("per_species_widgets")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[],
-        unpack_depth=1,
-    )
-    .partial(outputs=per_species_outputs, **per_species_widgets_params)
-    .call()
-)
-
-
-# %% [markdown]
-# ## Extract per-species PNG paths
-
-# %%
-# parameters
-
-per_species_png_paths_params = dict()
-
-# %%
-# call the task
-
-
-per_species_png_paths = (
-    get_per_species_png_paths.set_task_instance_id("per_species_png_paths")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[],
-        unpack_depth=1,
-    )
-    .partial(outputs=per_species_outputs, **per_species_png_paths_params)
-    .call()
-)
-
-
-# %% [markdown]
-# ## Extract per-species species names
-
-# %%
-# parameters
-
-per_species_species_names_params = dict()
-
-# %%
-# call the task
-
-
-per_species_species_names = (
-    get_per_species_species_names.set_task_instance_id("per_species_species_names")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[],
-        unpack_depth=1,
-    )
-    .partial(outputs=per_species_outputs, **per_species_species_names_params)
-    .call()
-)
-
-
-# %% [markdown]
-# ## Build per-species distribution pages Word doc
-
-# %%
-# parameters
-
-per_species_pages_docx_params = dict()
-
-# %%
-# call the task
-
-
-per_species_pages_docx = (
-    build_per_species_pages_docx.set_task_instance_id("per_species_pages_docx")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[],
-        unpack_depth=1,
-    )
-    .partial(
-        species_png_paths=per_species_png_paths,
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        species_names=per_species_species_names,
-        filename="per_species_maps.docx",
-        use_landscape=False,
-        maps_per_row=2,
-        maps_per_col=3,
-        heading_font_size_pt=7,
-        font_name="Arial",
-        **per_species_pages_docx_params,
     )
     .call()
 )
@@ -1355,6 +1358,42 @@ render_report_body = (
 
 
 # %% [markdown]
+# ## Build per-species distribution pages
+
+# %%
+# parameters
+
+per_species_pages_docx_params = dict()
+
+# %%
+# call the task
+
+
+per_species_pages_docx = (
+    build_per_species_pages_docx.set_task_instance_id("per_species_pages_docx")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[],
+        unpack_depth=1,
+    )
+    .partial(
+        species_png_paths=per_species_png_paths,
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        species_names=per_species_species_names,
+        filename="per_species_maps.docx",
+        use_landscape=False,
+        maps_per_row=2,
+        maps_per_col=3,
+        heading_font_size_pt=7,
+        font_name="Arial",
+        **per_species_pages_docx_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
 # ## Assemble final report
 
 # %%
@@ -1413,9 +1452,9 @@ snake_dashboard = (
         widgets=[
             summary_table_widget,
             all_species_widget,
-            effort_map_widget,
             richness_map_widget,
-            per_species_widgets,
+            effort_map_widget,
+            top10_per_species_widgets,
         ],
         time_range=time_range,
         groupers=groupers,
