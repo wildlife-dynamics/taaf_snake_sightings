@@ -4,18 +4,23 @@ requirements:
   - name: ecoscope-workflows-core
     version: "0.22.17.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
+
   - name: ecoscope-workflows-ext-ecoscope
     version: "0.22.17.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
+
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.28.*"
+    version: "0.0.39.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
   - name: ecoscope-workflows-ext-ste
     version: "0.0.18.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
   - name: ecoscope-workflows-ext-taff
-    version: "0.0.8.*"
+    version: "0.0.8*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
   - name: pandas
     version: ">=1.5.0"
     channel: conda-forge
@@ -40,11 +45,6 @@ rjsf-overrides:
     "time_range.properties.since.default": "2000-01-01T00:00:00Z"
     "time_range.properties.until.default": "2026-04-01T00:00:00Z"
 
-# Global default: skip tasks whose inputs are empty DataFrames only.
-# any_dependency_skipped is NOT here — we don't use separate MCP layer tasks
-# any more, so there is nothing optional that could cascade a SkipSentinel.
-# The MCP hull polygon is now embedded inside the points GDF by the Python
-# task, so draw_map always receives exactly one clean layer.
 task-instance-defaults:
   skipif:
     conditions:
@@ -122,7 +122,9 @@ workflow:
       remove_spatial_outliers: true
       iqr_factor: 3.0
 
+  # ═══════════════════════════════════════════════════════════════════════════
   # SECTION 2 — Species summary table
+  # ═══════════════════════════════════════════════════════════════════════════
 
   - name: Build species summary table
     id: species_summary_df
@@ -162,7 +164,7 @@ workflow:
         - Unique Locations
         - First Observation
         - Last Observation
-        - Range (km2)
+        - "Range (km2)"
       table_config:
         enable_sorting: true
         enable_filtering: false
@@ -188,8 +190,7 @@ workflow:
 
   # ═══════════════════════════════════════════════════════════════════════════
   # SECTION 3 — All-species distribution map
-  # prepare_all_species_points_gdf returns points + hull in one GDF.
-  # draw_map receives exactly one layer — no SkipSentinel possible.
+  # prepare_all_species_points_gdf returns points + MCP hull in one GDF.
   # ═══════════════════════════════════════════════════════════════════════════
 
   - name: Prepare all-species points GDF
@@ -202,7 +203,6 @@ workflow:
     id: all_pts_layer
     task: create_geojson_layer
     partial:
-      #data_url: null
       geodataframe: ${{ workflow.all_pts_gdf.return }}
       layer_style:
         filled: true
@@ -225,7 +225,7 @@ workflow:
     partial:
       geodataframes:
         - ${{ workflow.all_pts_gdf.return }}
-      max_zoom: 5
+      max_zoom: 7
 
   - name: Draw all-species map
     id: draw_all_species_map
@@ -241,8 +241,8 @@ workflow:
           opacity: 0.25
       view_state: ${{ workflow.all_view_state.return }}
       static: true
-      title: All Snake Species Distribution
-      max_zoom: 5
+      title: null
+      max_zoom: 7
       legend_style:
         placement: bottom-right
 
@@ -264,166 +264,8 @@ workflow:
       data: ${{ workflow.persist_all_species_html.return }}
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # SECTION 4 — Observation effort map
-  # ═══════════════════════════════════════════════════════════════════════════
-
-  - name: Create observation effort grid
-    id: effort_grid
-    task: create_observation_effort_grid
-    partial:
-      gdf: ${{ workflow.filter_species.return }}
-      grid_size_meters: 15000
-      planar_crs: EPSG:32737
-      output_crs: EPSG:4326
-
-  - name: Effort map layer
-    id: effort_layer
-    task: create_geojson_layer
-    partial:
-      #data_url: null
-      geodataframe: ${{ workflow.effort_grid.return }}
-      layer_style:
-        filled: true
-        stroked: true
-        get_fill_color: fill_color
-        get_line_color: [80, 80, 80, 90]
-        get_line_width: 0.6
-        opacity: 1.0
-      legend:
-        title: Observation Effort (15 km grid)
-        label_column: bin_label
-        color_column: fill_color
-        sort: ascending
-
-  - name: Effort map view state
-    id: effort_view_state
-    task: view_state_from_geodataframes
-    skipif: {}
-    partial:
-      geodataframes:
-        - ${{ workflow.effort_grid.return }}
-      max_zoom: 5
-
-  - name: Draw observation effort map
-    id: draw_effort_map
-    task: draw_map
-    skipif: {}
-    partial:
-      geo_layers:
-        - ${{ workflow.effort_layer.return }}
-      tile_layers:
-        - layer_name: TERRAIN
-          opacity: 1.0
-        - layer_name: USGS HILLSHADE
-          opacity: 0.25
-      view_state: ${{ workflow.effort_view_state.return }}
-      static: true
-      title: Snake Observation Effort
-      max_zoom: 5
-      legend_style:
-        placement: bottom-right
-
-  - name: Persist effort map HTML
-    id: persist_effort_html
-    task: persist_text
-    skipif: {}
-    partial:
-      text: ${{ workflow.draw_effort_map.return }}
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filename_suffix: observation_effort
-
-  - name: Effort map widget
-    id: effort_map_widget
-    task: create_map_widget_single_view
-    skipif: {}
-    partial:
-      title: Snake Observation Effort
-      data: ${{ workflow.persist_effort_html.return }}
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # SECTION 5 — Species richness map
-  # ═══════════════════════════════════════════════════════════════════════════
-
-  - name: Create species richness grid
-    id: richness_grid
-    task: create_species_richness_grid
-    partial:
-      gdf: ${{ workflow.filter_species.return }}
-      name_column: taxon_name
-      grid_size_meters: 15000
-      planar_crs: EPSG:32737
-      output_crs: EPSG:4326
-
-  - name: Richness map layer
-    id: richness_layer
-    task: create_geojson_layer
-    partial:
-      #data_url: null
-      geodataframe: ${{ workflow.richness_grid.return }}
-      layer_style:
-        filled: true
-        stroked: true
-        get_fill_color: fill_color
-        get_line_color: [80, 80, 80, 90]
-        get_line_width: 0.5
-        opacity: 1.0
-      legend:
-        title: Snake Species Richness (15 km grid)
-        label_column: bin_label
-        color_column: fill_color
-        sort: ascending
-
-  - name: Richness map view state
-    id: richness_view_state
-    task: view_state_from_geodataframes
-    skipif: {}
-    partial:
-      geodataframes:
-        - ${{ workflow.richness_grid.return }}
-      max_zoom: 5
-
-  - name: Draw species richness map
-    id: draw_richness_map
-    task: draw_map
-    skipif: {}
-    partial:
-      geo_layers:
-        - ${{ workflow.richness_layer.return }}
-      tile_layers:
-        - layer_name: TERRAIN
-          opacity: 1.0
-        - layer_name: USGS HILLSHADE
-          opacity: 0.25
-      view_state: ${{ workflow.richness_view_state.return }}
-      static: true
-      title: Snake Species Richness
-      max_zoom: 5
-      legend_style:
-        placement: bottom-right
-
-  - name: Persist richness map HTML
-    id: persist_richness_html
-    task: persist_text
-    skipif: {}
-    partial:
-      text: ${{ workflow.draw_richness_map.return }}
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filename_suffix: species_richness
-
-  - name: Richness map widget
-    id: richness_map_widget
-    task: create_map_widget_single_view
-    skipif: {}
-    partial:
-      title: Species Richness Map
-      data: ${{ workflow.persist_richness_html.return }}
-
-  # SECTION 6 — Per-species distribution maps (dynamic — discovers species at runtime)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Replaces the old pattern of 116 × 6 hardcoded tasks. One task runs the
-  # full per-species pipeline (points GDF → layer → view state → map HTML →
-  # PNG → widget) for every species found in the filtered observations, then
-  # three lightweight extractor tasks unwrap the three output lists.
+  # SECTION 4 — Per-species distribution maps
+  # One task discovers all species and runs the full per-species pipeline.
   # ═══════════════════════════════════════════════════════════════════════════
 
   - name: Generate all per-species outputs
@@ -434,12 +276,14 @@ workflow:
       gdf: ${{ workflow.filter_species.return }}
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       name_column: taxon_name
+      top_n_by_count: null
+      species_summary_df: ${{ workflow.species_summary_df.return }}
       buffer_fraction: 0.15
       zoom_extra: 0
       fallback_zoom: 0
       fallback_lat: 0.0
       fallback_lon: 0.0
-      map_max_zoom: 5
+      map_max_zoom: 7
       png_device_scale_factor: 2.0
       png_wait_for_timeout: 15000
       overlay_widget_scale: 0.65
@@ -465,36 +309,182 @@ workflow:
     partial:
       outputs: ${{ workflow.per_species_outputs.return }}
 
-  - name: Build per-species distribution pages Word doc
-    id: per_species_pages_docx
-    task: build_per_species_pages_docx
+  - name: Select top 10 per-species widgets for dashboard
+    id: top10_per_species_widgets
+    task: take_first_n_items
     skipif: {}
     partial:
-      species_png_paths: ${{ workflow.per_species_png_paths.return }}
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      species_names: ${{ workflow.per_species_species_names.return }}
-      filename: per_species_maps.docx
-      use_landscape: false
-      maps_per_row: 2
-      maps_per_col: 3
-      heading_font_size_pt: 7
-      font_name: Arial
+      items: ${{ workflow.per_species_widgets.return }}
+      n: 10
 
-  # ── Report: generate template, render with create_docx, combine with combine_docx_files ──
-  # Template is built entirely in code (no external file to pull).
-  # create_docx (ecoscope built-in) renders it and handles HTML → PNG conversion
-  # internally via Playwright, so no separate html_to_png steps are needed.
-  # combine_docx_files (ecoscope built-in) appends the summary table and
-  # per-species map pages, producing the final report.
-  #
-  # Final document order:
-  #   1. Cover page
-  #   2. All Snake Species Distribution map
-  #   3. Observation Effort map
-  #   4. Species Richness map
-  #   5. Species Summary Table  (appended)
-  #   6. Per-Species Distribution Maps  (appended)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 5 — Observation effort map
+  # ═══════════════════════════════════════════════════════════════════════════
 
+  - name: Create observation effort grid
+    id: effort_grid
+    task: create_observation_effort_grid
+    partial:
+      gdf: ${{ workflow.filter_species.return }}
+      grid_size_meters: 15000
+      planar_crs: EPSG:32737
+      output_crs: EPSG:4326
+
+  - name: Effort map layer
+    id: effort_layer
+    task: create_geojson_layer
+    partial:
+      geodataframe: ${{ workflow.effort_grid.return }}
+      layer_style:
+        filled: true
+        stroked: true
+        extruded: false
+        wireframe: false
+        get_fill_color: density_colors
+        get_line_color: [0, 0, 0]
+        opacity: 0.75
+        get_line_width: 0.85
+        get_elevation: 0
+        get_point_radius: 1
+        line_width_units: pixels
+        line_width_scale: 1
+        line_width_min_pixels: 1
+        line_width_max_pixels: 5
+      legend:
+        title: Observation Effort
+        label_column: density_bins
+        color_column: density_colors
+
+  - name: Effort map view state
+    id: effort_view_state
+    task: view_state_from_geodataframes
+    skipif: {}
+    partial:
+      geodataframes:
+        - ${{ workflow.effort_grid.return }}
+      max_zoom: 7
+
+  - name: Draw observation effort map
+    id: draw_effort_map
+    task: draw_map
+    skipif: {}
+    partial:
+      geo_layers:
+        - ${{ workflow.effort_layer.return }}
+      tile_layers:
+        - layer_name: TERRAIN
+          opacity: 1.0
+        - layer_name: USGS HILLSHADE
+          opacity: 0.25
+      view_state: ${{ workflow.effort_view_state.return }}
+      static: true
+      title: null
+      max_zoom: 7
+      legend_style:
+        placement: bottom-right
+
+  - name: Persist effort map HTML
+    id: persist_effort_html
+    task: persist_text
+    skipif: {}
+    partial:
+      text: ${{ workflow.draw_effort_map.return }}
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: observation_effort
+
+  - name: Effort map widget
+    id: effort_map_widget
+    task: create_map_widget_single_view
+    skipif: {}
+    partial:
+      title: Snake Observation Effort
+      data: ${{ workflow.persist_effort_html.return }}
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 6 — Species richness map
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  - name: Create species richness grid
+    id: richness_grid
+    task: create_species_richness_grid
+    partial:
+      gdf: ${{ workflow.filter_species.return }}
+      name_column: taxon_name
+      grid_size_meters: 15000
+      planar_crs: EPSG:32737
+      output_crs: EPSG:4326
+
+  - name: Richness map layer
+    id: richness_layer
+    task: create_geojson_layer
+    partial:
+      geodataframe: ${{ workflow.richness_grid.return }}
+      layer_style:
+        filled: true
+        stroked: true
+        extruded: false
+        wireframe: false
+        get_fill_color: density_colors
+        get_line_color: [0, 0, 0]
+        opacity: 0.75
+        get_line_width: 0.85
+        get_elevation: 0
+        get_point_radius: 1
+        line_width_units: pixels
+        line_width_scale: 1
+        line_width_min_pixels: 1
+        line_width_max_pixels: 5
+      legend:
+        title: Snake Species Richness
+        label_column: density_bins
+        color_column: density_colors
+
+  - name: Richness map view state
+    id: richness_view_state
+    task: view_state_from_geodataframes
+    skipif: {}
+    partial:
+      geodataframes:
+        - ${{ workflow.richness_grid.return }}
+      max_zoom: 7
+
+  - name: Draw species richness map
+    id: draw_richness_map
+    task: draw_map
+    skipif: {}
+    partial:
+      geo_layers:
+        - ${{ workflow.richness_layer.return }}
+      tile_layers:
+        - layer_name: TERRAIN
+          opacity: 1.0
+        - layer_name: USGS HILLSHADE
+          opacity: 0.25
+      view_state: ${{ workflow.richness_view_state.return }}
+      static: true
+      title: null
+      max_zoom: 7
+      legend_style:
+        placement: bottom-right
+
+  - name: Persist richness map HTML
+    id: persist_richness_html
+    task: persist_text
+    skipif: {}
+    partial:
+      text: ${{ workflow.draw_richness_map.return }}
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: species_richness
+
+  - name: Richness map widget
+    id: richness_map_widget
+    task: create_map_widget_single_view
+    skipif: {}
+    partial:
+      title: Species Richness Map
+      data: ${{ workflow.persist_richness_html.return }}
+
+  # SECTION 7 — Word report assembly
   - name: Generate Word report template
     id: report_template
     task: create_report_template
@@ -530,6 +520,21 @@ workflow:
       filename_prefix: snake_distribution_report
       groupers: null
 
+  - name: Build per-species distribution pages
+    id: per_species_pages_docx
+    task: build_per_species_pages_docx
+    skipif: {}
+    partial:
+      species_png_paths: ${{ workflow.per_species_png_paths.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      species_names: ${{ workflow.per_species_species_names.return }}
+      filename: per_species_maps.docx
+      use_landscape: false
+      maps_per_row: 2
+      maps_per_col: 3
+      heading_font_size_pt: 7
+      font_name: Arial
+
   - name: Assemble final report
     id: final_report
     task: combine_docx_files
@@ -543,7 +548,9 @@ workflow:
         - ${{ workflow.per_species_pages_docx.return }}
       restart_numbering: false
 
-  # SECTION 8 — Dashboard
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 8 — Dashboard (11 widgets: 1 table + 3 fixed maps + 7 per-species)
+  # ═══════════════════════════════════════════════════════════════════════════
 
   - name: Snake sightings dashboard
     id: snake_dashboard
@@ -554,8 +561,8 @@ workflow:
       widgets:
         - ${{ workflow.summary_table_widget.return }}
         - ${{ workflow.all_species_widget.return }}
-        - ${{ workflow.effort_map_widget.return }}
         - ${{ workflow.richness_map_widget.return }}
-        - ${{ workflow.per_species_widgets.return }}
+        - ${{ workflow.effort_map_widget.return }}
+        - ${{ workflow.top10_per_species_widgets.return }}
       time_range: ${{ workflow.time_range.return }}
       groupers: ${{ workflow.groupers.return }}
