@@ -1109,7 +1109,10 @@ richness_map_widget = (
 # %%
 # parameters
 
-per_species_outputs_params = dict()
+per_species_outputs_params = dict(
+    top_n_by_count=...,
+    species_summary_df=...,
+)
 
 # %%
 # call the task
