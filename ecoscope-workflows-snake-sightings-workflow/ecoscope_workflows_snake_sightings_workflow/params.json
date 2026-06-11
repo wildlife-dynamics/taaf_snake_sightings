@@ -74,6 +74,36 @@
       ],
       "type": "object",
       "title": "Connect to EarthRanger"
+    },
+    "per_species_outputs": {
+      "additionalProperties": false,
+      "properties": {
+        "top_n_by_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top N By Count"
+        },
+        "species_summary_df": {
+          "anyOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Species Summary Df"
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Generate all per-species outputs"
     }
   },
   "$defs": {
@@ -134,10 +164,17 @@
         "time_format"
       ]
     },
+    "per_species_outputs": {
+      "ui:order": [
+        "top_n_by_count",
+        "species_summary_df"
+      ]
+    },
     "ui:order": [
       "workflow_details",
       "time_range",
-      "er_client"
+      "er_client",
+      "per_species_outputs"
     ]
   },
   "additionalProperties": false

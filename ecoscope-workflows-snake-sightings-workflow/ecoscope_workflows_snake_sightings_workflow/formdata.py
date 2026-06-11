@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -15,6 +15,14 @@ class WorkflowDetails(BaseModel):
     )
     name: str = Field(..., title="Workflow Name")
     description: Optional[str] = Field("", title="Workflow Description")
+
+
+class PerSpeciesOutputs(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    top_n_by_count: Optional[int] = Field(None, title="Top N By Count")
+    species_summary_df: Any = Field(None, title="Species Summary Df")
 
 
 class TimezoneInfo(BaseModel):
@@ -64,3 +72,6 @@ class FormData(BaseModel):
         title="Define analysis time range",
     )
     er_client: Optional[ErClient] = Field(None, title="Connect to EarthRanger")
+    per_species_outputs: Optional[PerSpeciesOutputs] = Field(
+        None, title="Generate all per-species outputs"
+    )
